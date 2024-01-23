@@ -1,7 +1,5 @@
 <script setup>
 import {reactive, ref} from 'vue'
-import {Greet} from '../../wailsjs/go/main/App'
-import {Networklist} from '../../wailsjs/go/main/App'
 import {CaptureTraffic} from '../../wailsjs/go/main/App'
 import {StopCaptureTraffic} from '../../wailsjs/go/main/App'
 
@@ -21,10 +19,6 @@ function greet() {
   CaptureTraffic(data.name).then(() => {
     console.log("start")
     startbut.value = "开始监听"
-  })
-  Networklist().then(result => {
-    code.value = result.code
-    list.value = result.data
   })
 }
 
