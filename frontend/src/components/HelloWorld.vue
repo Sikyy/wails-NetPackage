@@ -4,7 +4,6 @@ import {Greet} from '../../wailsjs/go/main/App'
 import {Networklist} from '../../wailsjs/go/main/App'
 import {CaptureTraffic} from '../../wailsjs/go/main/App'
 import {StopCaptureTraffic} from '../../wailsjs/go/main/App'
-import {NewStopCaptureCh} from '../../wailsjs/go/main/App'
 
 const data = reactive({
   name: "",
@@ -18,8 +17,6 @@ let stopbut = ref()
 
 
 function greet() {
-  //每次开启监听前先创建一个新的退出管道
-  // NewStopCaptureCh()
   //输入哪个网口就监听哪个//en1
   CaptureTraffic(data.name).then(() => {
     console.log("start")

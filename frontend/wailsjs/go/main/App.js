@@ -14,10 +14,6 @@ export function Networklist() {
   return window['go']['main']['App']['Networklist']();
 }
 
-export function NewStopCaptureCh() {
-  return window['go']['main']['App']['NewStopCaptureCh']();
-}
-
 export function StopCaptureTraffic() {
   return window['go']['main']['App']['StopCaptureTraffic']();
 }

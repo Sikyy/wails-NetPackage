@@ -11,10 +11,9 @@ import (
 	"github.com/google/gopacket/pcap"
 )
 
-// 声明一个退出捕获的信号通道
-var stopCaptureCh chan struct{}
 var ID int64 = 0
 var NetHandle *pcap.Handle
+var StopCaptureCh chan struct{}
 
 // Network list 枚举网卡
 func Networklist() ([]string, error) {
@@ -37,7 +36,7 @@ func Networklist() ([]string, error) {
 // 进行数据包捕获和处理
 func CaptureTraffic(iface string) {
 	// 定义一个管道，用于停止数据包捕获
-	var stopCaptureCh = make(chan struct{})
+	StopCaptureCh = make(chan struct{})
 	// 定义一个互斥锁
 	var mu sync.Mutex
 	// 打开网络接口，返回一个网络接口的句柄
@@ -54,7 +53,7 @@ func CaptureTraffic(iface string) {
 	// 保证程序退出时关闭网络接口
 	defer handle.Close()
 	// 保证程序退出时关闭管道
-	defer close(stopCaptureCh)
+	defer close(StopCaptureCh)
 
 	// 存储句柄到全局变量
 	NetHandle = handle
@@ -75,8 +74,10 @@ func CaptureTraffic(iface string) {
 			// 按照Surge请求查看器格式输出
 			ProcessPacket(packet, &SessionInfo)
 
-		case <-stopCaptureCh:
+		case <-StopCaptureCh:
 			// 接收到停止捕获信号，退出循环
+			//重制全局变量
+			StopCaptureCh = make(chan struct{})
 			return
 		}
 	}
@@ -111,11 +112,6 @@ func StopCapture() {
 
 	if NetHandle != nil {
 		// 发送停止捕获信号
-		stopCaptureCh <- struct{}{}
+		StopCaptureCh <- struct{}{}
 	}
-}
-
-// 创建一个新的关闭通道
-func NewStopCaptureCh() chan struct{} {
-	return make(chan struct{})
 }

@@ -52,9 +52,3 @@ func (a *App) CaptureTraffic(iface string) {
 func (a *App) StopCaptureTraffic() {
 	services.StopCapture()
 }
-
-// NewStopCaptureCh 创建一个退出捕获的信号通道
-func (a *App) NewStopCaptureCh() chan struct{} {
-	stopCaptureCh := services.NewStopCaptureCh()
-	return stopCaptureCh
-}

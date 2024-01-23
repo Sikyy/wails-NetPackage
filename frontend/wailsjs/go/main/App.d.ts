@@ -7,6 +7,4 @@ export function Greet(arg1:string):Promise<string>;
 
 export function Networklist():Promise<any>;
 
-export function NewStopCaptureCh():Promise<any>;
-
 export function StopCaptureTraffic():Promise<void>;
