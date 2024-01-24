@@ -44,8 +44,8 @@ func (a *App) Networklist() interface{} {
 }
 
 // 进行数据包的捕获
-func (a *App) CaptureTraffic(iface string) {
-	services.CaptureTraffic(iface)
+func (a *App) CaptureTraffic() {
+	go services.CaptureTraffic()
 }
 
 // StopCaptureTraffic 停止数据包的捕获

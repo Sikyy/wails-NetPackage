@@ -15,16 +15,14 @@ let stopbut = ref()
 
 
 function greet() {
-  //输入哪个网口就监听哪个//en1
-  CaptureTraffic(data.name).then(() => {
+  CaptureTraffic().then(() => {
     console.log("start")
     startbut.value = "开始监听"
   })
 }
 
 function stop() {
-  //输入哪个网口就停止监听哪个//en1
-  StopCaptureTraffic(data.name).then(() => {
+  StopCaptureTraffic().then(() => {
     console.log("stop")
     stopbut.value = "停止监听"
   })

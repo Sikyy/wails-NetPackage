@@ -34,51 +34,60 @@ func Networklist() ([]string, error) {
 }
 
 // 进行数据包捕获和处理
-func CaptureTraffic(iface string) {
-	// 定义一个管道，用于停止数据包捕获
-	StopCaptureCh = make(chan struct{})
-	// 定义一个互斥锁
-	var mu sync.Mutex
-	// 打开网络接口，返回一个网络接口的句柄
-	handle, err := pcap.OpenLive(
-		iface,             // 网络接口名
-		65536,             // 每个数据包的最大长度
-		true,              // 设置为 true，表示开启混杂模式
-		pcap.BlockForever, //表示永远阻塞，不会超时返回。而使用负数时间，可以认为是一个“非常大的超时时间”，基本上达到了永远阻塞的效果
-	)
+func CaptureTraffic() {
+	// 枚举网卡
+	ifaces, err := Networklist()
 	if err != nil {
-		fmt.Printf("Error opening interface %s: %v\n", iface, err)
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
-	// 保证程序退出时关闭网络接口
-	defer handle.Close()
-	// 保证程序退出时关闭管道
-	defer close(StopCaptureCh)
 
-	// 存储句柄到全局变量
-	NetHandle = handle
+	for _, iface := range ifaces {
+		// 定义一个管道，用于停止数据包捕获
+		StopCaptureCh = make(chan struct{})
+		// 定义一个互斥锁
+		var mu sync.Mutex
+		// 打开网络接口，返回一个网络接口的句柄
+		handle, err := pcap.OpenLive(
+			iface,             // 网络接口名
+			65536,             // 每个数据包的最大长度
+			true,              // 设置为 true，表示开启混杂模式
+			pcap.BlockForever, //表示永远阻塞，不会超时返回。而使用负数时间，可以认为是一个“非常大的超时时间”，基本上达到了永远阻塞的效果
+		)
+		if err != nil {
+			fmt.Printf("Error opening interface %s: %v\n", iface, err)
+			log.Fatal(err)
+		}
+		// 保证程序退出时关闭网络接口
+		defer handle.Close()
+		// 保证程序退出时关闭管道
+		defer close(StopCaptureCh)
 
-	// 创建一个数据包源，用于接收数据包。
-	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
+		// 存储句柄到全局变量
+		NetHandle = handle
 
-	mu.Lock()
-	defer mu.Unlock()
+		// 创建一个数据包源，用于接收数据包。
+		packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 
-	for {
-		select {
-		case packet := <-packetSource.Packets():
-			// 处理数据包
-			// 把信息存入map中，并生成ID，计算会话开始时间，实现会话初始化
-			SessionInfo := JudgeIDAndWriteByteSessionMap(packet, &ID, &define.SessionMap)
-			fmt.Println(packet)
-			// 按照Surge请求查看器格式输出
-			ProcessPacket(packet, &SessionInfo)
+		mu.Lock()
+		defer mu.Unlock()
 
-		case <-StopCaptureCh:
-			// 接收到停止捕获信号，退出循环
-			//重制全局变量
-			StopCaptureCh = make(chan struct{})
-			return
+		for {
+			select {
+			case packet := <-packetSource.Packets():
+				// 处理数据包
+				// 把信息存入map中，并生成ID，计算会话开始时间，实现会话初始化
+				SessionInfo := JudgeIDAndWriteByteSessionMap(packet, &ID, &define.SessionMap)
+				fmt.Println(packet)
+				// 按照Surge请求查看器格式输出
+				ProcessPacket(packet, &SessionInfo)
+
+			case <-StopCaptureCh:
+				// 接收到停止捕获信号，退出循环
+				//重制全局变量
+				StopCaptureCh = make(chan struct{})
+				return
+			}
 		}
 	}
 

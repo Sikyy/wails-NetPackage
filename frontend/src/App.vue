@@ -13,6 +13,6 @@ import ViewNetManage from './components/ViewNetManage.vue';
       <ViewNet/>
     </el-col>
   </el-row>
-  <!-- <img id="logo" alt="Wails logo" src="./assets/images/logo-universal.png"/>
-  <HelloWorld/> -->
+  <!-- <img id="logo" alt="Wails logo" src="./assets/images/logo-universal.png"/> -->
+  <HelloWorld/>
 </template>
