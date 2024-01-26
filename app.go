@@ -1,9 +1,12 @@
 package main
 
 import (
+	"changeme/internal/define"
 	"changeme/internal/services"
 	"context"
 	"fmt"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
@@ -16,8 +19,6 @@ func NewApp() *App {
 	return &App{}
 }
 
-// startup is called when the app starts. The context is saved
-// so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 }
@@ -45,7 +46,17 @@ func (a *App) Networklist() interface{} {
 
 // 进行数据包的捕获
 func (a *App) CaptureTraffic() {
-	go services.CaptureTraffic()
+
+	sessionInfoCh := make(chan define.SessionInfoFront)
+	go services.CaptureTraffic(sessionInfoCh)
+
+	for tabelinfo := range sessionInfoCh {
+		// 使用 EventsEmit 方法触发事件并传递 tabelinfo 数据
+		runtime.EventsEmit(a.ctx, "captureTraffic", tabelinfo)
+		fmt.Println("前端渲染数据:", tabelinfo)
+		// time.Sleep(time.Hour)
+	}
+
 }
 
 // StopCaptureTraffic 停止数据包的捕获

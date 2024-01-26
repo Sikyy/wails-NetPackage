@@ -34,7 +34,7 @@ func Networklist() ([]string, error) {
 }
 
 // 进行数据包捕获和处理
-func CaptureTraffic() {
+func CaptureTraffic(sessionInfoCh chan<- define.SessionInfoFront) {
 	// 枚举网卡
 	ifaces, err := Networklist()
 	if err != nil {
@@ -81,16 +81,22 @@ func CaptureTraffic() {
 				fmt.Println(packet)
 				// 按照Surge请求查看器格式输出
 				ProcessPacket(packet, &SessionInfo)
+				// 实时发送会话信息到通道
+				info := ReturnPacket(packet, &SessionInfo)
+				select {
+				case sessionInfoCh <- info:
+				default:
+					fmt.Println("Failed to send session info to channel.")
+				}
 
 			case <-StopCaptureCh:
 				// 接收到停止捕获信号，退出循环
-				//重制全局变量
+				// 重制全局变量
 				StopCaptureCh = make(chan struct{})
 				return
 			}
 		}
 	}
-
 }
 
 // 按照Surge请求查看器格式输出
@@ -111,6 +117,21 @@ func ProcessPacket(packet gopacket.Packet, sessionInfo *define.SessionInfo) {
 	fmt.Printf("开始时间: %v, 结束时间: %v\n", sessionInfo.StartTime, sessionInfo.EndTime)
 	fmt.Printf("地址: %s\n", sessionInfo.Host)
 	fmt.Println("----")
+}
+
+// 返回数据包格式给前端进行展示
+func ReturnPacket(packet gopacket.Packet, sessionInfo *define.SessionInfo) define.SessionInfoFront {
+	// 在这里添加解析和整理数据包的逻辑
+	return define.SessionInfoFront{
+		ID:                 sessionInfo.ID,                                 //会话ID
+		Time_s:             time.Now().Format("15:04:05"),                  // 数据包的时间
+		Status:             sessionInfo.TCPStatus,                          // 会话状态
+		SessionUpTraffic:   sessionInfo.SessionUpTraffic,                   // 会话上行流量信息
+		SessionDownTraffic: sessionInfo.SessionDownTraffic,                 // 会话下行流量信息
+		Length_of_time:     sessionInfo.EndTime.Sub(sessionInfo.StartTime), //会话持续时间
+		Method:             sessionInfo.Method,                             //会话的请求方法
+		Host:               sessionInfo.Host,                               //会话的主机
+	}
 }
 
 // 停止数据包捕获
