@@ -9,6 +9,8 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+var SessionInfoCh chan define.SessionInfoFront
+
 // App struct
 type App struct {
 	ctx context.Context
@@ -46,16 +48,16 @@ func (a *App) Networklist() interface{} {
 
 // 进行数据包的捕获
 func (a *App) CaptureTraffic() {
+	SessionInfoCh = make(chan define.SessionInfoFront)
 
-	sessionInfoCh := make(chan define.SessionInfoFront)
-	go services.CaptureTraffic(sessionInfoCh)
+	go services.CaptureTraffic(SessionInfoCh)
 
-	for tabelinfo := range sessionInfoCh {
-		// 使用 EventsEmit 方法触发事件并传递 tabelinfo 数据
-		runtime.EventsEmit(a.ctx, "captureTraffic", tabelinfo)
-		fmt.Println("前端渲染数据:", tabelinfo)
-		// time.Sleep(time.Hour)
-	}
+	go func() {
+		for tabelinfo := range SessionInfoCh {
+			// 使用 EventsEmit 方法触发事件并传递 tabelinfo 数据
+			runtime.EventsEmit(a.ctx, "captureTraffic", tabelinfo)
+		}
+	}()
 
 }
 

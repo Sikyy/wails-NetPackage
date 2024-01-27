@@ -1,5 +1,5 @@
 <template>
-    <el-table :data="tableData" stripe style="width: 100%">
+    <el-table :data="tableData" stripe style="width: 100%" max-height="1245">
       <el-table-column prop="id" label="会话ID" width="100" />
       <el-table-column prop="date" label="日期" width="100" />
       <el-table-column prop="clientname" label="客户端" width="100" />
@@ -18,15 +18,15 @@
   
   const tableData = ref([
     {
-      id: '1',
-      date: '17:00:00',
-      clientname: 'Telegram',
-      status: '已完成',
-      upload: '100M',
-      download: '100M',
-      still_time: '200ms',
-      method: 'GET',
-      host: '192.168.50.1',
+      id: '',
+      date: '',
+      clientname: '',
+      status: '',
+      upload: '',
+      download: '',
+      still_time: '',
+      method: '',
+      host: '',
     },
   ]);
   
@@ -35,21 +35,39 @@
   });
   
   function GetTraffic() {
-    EventsOn('captureTraffic', (data) => {
-      console.log("Received traffic data:", data);
-  
-      // 将接收到的数据添加到 tableData 的末尾{
-      tableData.value.push({
-        id :data.ID,
-        date :data.Time_s,
+  EventsOn('captureTraffic', (data) => {
+    console.log("接收到流量数据:", data);
+
+    // 检查数据的ID是否已经存在于tableData中
+    const existingIndex = tableData.value.findIndex(item => item.id === data.ID);
+
+    if (existingIndex !== -1) {
+      // 如果存在，更新现有数据
+      tableData.value[existingIndex] = {
+        id: data.ID,
+        date: data.Time_s,
         clientname: "",
         status: data.Status,
         upload: data.SessionUpTraffic,
         download: data.SessionDownTraffic,
-        still_time: data.Length_of_time,
+        still_time: data.Length_of_time + "ms",
+        method: data.Method,
+        host: data.Host,
+      };
+    } else {
+      // 如果不存在，添加新数据
+      tableData.value.push({
+        id: data.ID,
+        date: data.Time_s,
+        clientname: "",
+        status: data.Status,
+        upload: data.SessionUpTraffic,
+        download: data.SessionDownTraffic,
+        still_time: data.Length_of_time + "ms",
         method: data.Method,
         host: data.Host,
       });
-    });
-  }
-  </script>
+    }
+  });
+}
+</script>

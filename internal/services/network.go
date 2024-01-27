@@ -14,6 +14,7 @@ import (
 var ID int64 = 0
 var NetHandle *pcap.Handle
 var StopCaptureCh chan struct{}
+var StopSessionInfoCh chan struct{}
 
 // Network list 枚举网卡
 func Networklist() ([]string, error) {
@@ -34,7 +35,7 @@ func Networklist() ([]string, error) {
 }
 
 // 进行数据包捕获和处理
-func CaptureTraffic(sessionInfoCh chan<- define.SessionInfoFront) {
+func CaptureTraffic(SessionInfoCh chan<- define.SessionInfoFront) {
 	// 枚举网卡
 	ifaces, err := Networklist()
 	if err != nil {
@@ -84,9 +85,14 @@ func CaptureTraffic(sessionInfoCh chan<- define.SessionInfoFront) {
 				// 实时发送会话信息到通道
 				info := ReturnPacket(packet, &SessionInfo)
 				select {
-				case sessionInfoCh <- info:
+				case SessionInfoCh <- info:
+					//接收关闭信号，关闭通道
+				// case <-StopSessionInfoCh:
+				// 	// 重制全局变量
+				// 	SessionInfoCh = make(chan<- define.SessionInfoFront)
+				// 	return
 				default:
-					fmt.Println("Failed to send session info to channel.")
+					fmt.Println("SessionInfoCh is full")
 				}
 
 			case <-StopCaptureCh:
@@ -126,8 +132,8 @@ func ReturnPacket(packet gopacket.Packet, sessionInfo *define.SessionInfo) defin
 		ID:                 sessionInfo.ID,                                 //会话ID
 		Time_s:             time.Now().Format("15:04:05"),                  // 数据包的时间
 		Status:             sessionInfo.TCPStatus,                          // 会话状态
-		SessionUpTraffic:   sessionInfo.SessionUpTraffic,                   // 会话上行流量信息
-		SessionDownTraffic: sessionInfo.SessionDownTraffic,                 // 会话下行流量信息
+		SessionUpTraffic:   FormatBytes(sessionInfo.SessionUpTraffic),      // 会话上行流量信息
+		SessionDownTraffic: FormatBytes(sessionInfo.SessionDownTraffic),    // 会话下行流量信息
 		Length_of_time:     sessionInfo.EndTime.Sub(sessionInfo.StartTime), //会话持续时间
 		Method:             sessionInfo.Method,                             //会话的请求方法
 		Host:               sessionInfo.Host,                               //会话的主机
@@ -143,5 +149,7 @@ func StopCapture() {
 	if NetHandle != nil {
 		// 发送停止捕获信号
 		StopCaptureCh <- struct{}{}
+		// StopSessionInfoCh <- struct{}{}
+
 	}
 }

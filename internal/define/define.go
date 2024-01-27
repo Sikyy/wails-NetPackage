@@ -47,8 +47,8 @@ type SessionInfoFront struct {
 	ID                 int64         // 会话ID
 	Time_s             string        // 数据包的时间
 	Status             string        // 会话状态
-	SessionUpTraffic   float64       // 会话上行流量信息
-	SessionDownTraffic float64       // 会话下行流量信息
+	SessionUpTraffic   string        // 会话上行流量信息
+	SessionDownTraffic string        // 会话下行流量信息
 	Length_of_time     time.Duration //会话持续时间
 	Method             string        //会话的请求方法
 	Host               string        //会话的主机

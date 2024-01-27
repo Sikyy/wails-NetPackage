@@ -157,6 +157,24 @@ func HandleHTTPPorHTTPSPacket(packet gopacket.Packet) (string, string) {
 		protocol = ipLayer.NextHeader
 	}
 
+	// tlsLayer := packet.Layer(layers.LayerTypeTLS)
+	// if tlsLayer != nil {
+	// 	// 解析 TLS 握手消息
+	// 	tls, ok := tlsLayer.(*layers.TLS)
+	// 	if ok && tls.Handshake != nil && len(tls.Handshake) > 0 {
+	// 		// 遍历 TLS 握手消息
+	// 		for _, handshake := range tls.Handshake {
+	// 			// 检查消息类型是否为 Client Hello
+	// 			if clientHello, ok := handshake.(*layers.TLSClientHello); ok {
+	// 				// 获取 SNI 字段
+	// 				sni := clientHello.ServerName
+	// 				// 打印 SNI 字段
+	// 				fmt.Println("Server Name Indication (SNI):", sni)
+	// 			}
+	// 		}
+	// 	}
+	// }
+
 	// 处理 TCP 流量
 	if tcp != nil {
 		if isHTTPS(packet) {
