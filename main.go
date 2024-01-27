@@ -17,7 +17,7 @@ func main() {
 
 	// Create application with options
 	err := wails.Run(&options.App{
-		Title:  "wails-net-package",
+		Title:  "Siky-Net",
 		Width:  1224,
 		Height: 768,
 		AssetServer: &assetserver.Options{
