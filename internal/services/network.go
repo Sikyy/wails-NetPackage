@@ -115,6 +115,7 @@ func ProcessPacket(packet gopacket.Packet, sessionInfo *define.SessionInfo) {
 
 	// 以下是一个示例，你需要根据实际情况进行修改
 	fmt.Printf("会话ID: %d\n", sessionInfo.ID)
+	fmt.Printf("会话名称: %s\n", sessionInfo.Name)
 	fmt.Printf("日期: %s\n", time.Now().Format("15:04:05"))
 	fmt.Printf("客户端 状态: %s\n", sessionInfo.TCPStatus)
 	fmt.Printf("策略: %s\n", "Normal") // 这里需要替换为实际的策略
@@ -129,14 +130,15 @@ func ProcessPacket(packet gopacket.Packet, sessionInfo *define.SessionInfo) {
 func ReturnPacket(packet gopacket.Packet, sessionInfo *define.SessionInfo) define.SessionInfoFront {
 	// 在这里添加解析和整理数据包的逻辑
 	return define.SessionInfoFront{
-		ID:                 sessionInfo.ID,                                 //会话ID
-		Time_s:             time.Now().Format("15:04:05"),                  // 数据包的时间
-		Status:             sessionInfo.TCPStatus,                          // 会话状态
-		SessionUpTraffic:   FormatBytes(sessionInfo.SessionUpTraffic),      // 会话上行流量信息
-		SessionDownTraffic: FormatBytes(sessionInfo.SessionDownTraffic),    // 会话下行流量信息
-		Length_of_time:     sessionInfo.EndTime.Sub(sessionInfo.StartTime), //会话持续时间
-		Method:             sessionInfo.Method,                             //会话的请求方法
-		Host:               sessionInfo.Host,                               //会话的主机
+		ID:                 sessionInfo.ID,                                            //会话ID
+		ClientName:         sessionInfo.Name,                                          // 会话名称
+		Time_s:             time.Now().Format("15:04:05"),                             // 数据包的时间
+		Status:             sessionInfo.TCPStatus,                                     // 会话状态
+		SessionUpTraffic:   FormatBytes(sessionInfo.SessionUpTraffic),                 // 会话上行流量信息
+		SessionDownTraffic: FormatBytes(sessionInfo.SessionDownTraffic),               // 会话下行流量信息
+		Length_of_time:     GetMSTime(sessionInfo.EndTime.Sub(sessionInfo.StartTime)), //会话持续时间
+		Method:             sessionInfo.Method,                                        //会话的请求方法
+		Host:               sessionInfo.Host,                                          //会话的主机
 	}
 }
 
@@ -152,4 +154,8 @@ func StopCapture() {
 		// StopSessionInfoCh <- struct{}{}
 
 	}
+}
+
+func GetMSTime(duration time.Duration) int64 {
+	return duration.Milliseconds()
 }

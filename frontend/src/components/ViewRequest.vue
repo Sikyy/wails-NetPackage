@@ -41,32 +41,35 @@
     // 检查数据的ID是否已经存在于tableData中
     const existingIndex = tableData.value.findIndex(item => item.id === data.ID);
 
-    if (existingIndex !== -1) {
-      // 如果存在，更新现有数据
-      tableData.value[existingIndex] = {
-        id: data.ID,
-        date: data.Time_s,
-        clientname: "",
-        status: data.Status,
-        upload: data.SessionUpTraffic,
-        download: data.SessionDownTraffic,
-        still_time: data.Length_of_time + "ms",
-        method: data.Method,
-        host: data.Host,
-      };
-    } else {
-      // 如果不存在，添加新数据
-      tableData.value.push({
-        id: data.ID,
-        date: data.Time_s,
-        clientname: "",
-        status: data.Status,
-        upload: data.SessionUpTraffic,
-        download: data.SessionDownTraffic,
-        still_time: data.Length_of_time + "ms",
-        method: data.Method,
-        host: data.Host,
-      });
+    // 如果 method 不是 "UDP"，才进行添加或更新操作
+    if (data.Method !== "UDP") {
+      if (existingIndex !== -1) {
+        // 如果存在，更新现有数据
+        tableData.value[existingIndex] = {
+          id: data.ID,
+          date: data.Time_s,
+          clientname: data.ClientName,
+          status: data.Status,
+          upload: data.SessionUpTraffic,
+          download: data.SessionDownTraffic,
+          still_time: data.Length_of_time + "ms",
+          method: data.Method,
+          host: data.Host,
+        };
+      } else {
+        // 如果不存在，添加新数据
+        tableData.value.push({
+          id: data.ID,
+          date: data.Time_s,
+          clientname: data.ClientName,
+          status: data.Status,
+          upload: data.SessionUpTraffic,
+          download: data.SessionDownTraffic,
+          still_time: data.Length_of_time + "ms",
+          method: data.Method,
+          host: data.Host,
+        });
+      }
     }
   });
 }

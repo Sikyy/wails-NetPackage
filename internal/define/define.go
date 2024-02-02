@@ -44,12 +44,13 @@ type SessionInfo struct {
 
 // 前端显示信息
 type SessionInfoFront struct {
-	ID                 int64         // 会话ID
-	Time_s             string        // 数据包的时间
-	Status             string        // 会话状态
-	SessionUpTraffic   string        // 会话上行流量信息
-	SessionDownTraffic string        // 会话下行流量信息
-	Length_of_time     time.Duration //会话持续时间
-	Method             string        //会话的请求方法
-	Host               string        //会话的主机
+	ID                 int64  // 会话ID
+	ClientName         string // 会话名称
+	Time_s             string // 数据包的时间
+	Status             string // 会话状态
+	SessionUpTraffic   string // 会话上行流量信息
+	SessionDownTraffic string // 会话下行流量信息
+	Length_of_time     int64  //会话持续时间
+	Method             string //会话的请求方法
+	Host               string //会话的主机
 }

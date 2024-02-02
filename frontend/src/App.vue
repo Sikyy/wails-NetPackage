@@ -1,5 +1,5 @@
 <script setup>
-import ViewNet from './components/ViewNet.vue';
+import ViewNet from './components/ViewNet.vue'
 import ViewNetManage from './components/ViewNetManage.vue';
 import ViewRequest from './components/ViewRequest.vue';
 </script>

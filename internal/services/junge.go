@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"regexp"
 	"strings"
 	"sync"
@@ -54,6 +55,18 @@ func JudgeIDAndWriteByteSessionMap(packet gopacket.Packet, ID *int64, sessionMap
 		dstIP = ipLayer.DstIP
 	}
 
+	//获取DstPort
+	var DstPort int
+	switch transportLayer.(type) {
+	case *layers.TCP:
+		tcp, _ := transportLayer.(*layers.TCP)
+		DstPort = int(tcp.DstPort)
+	case *layers.UDP:
+		udp, _ := transportLayer.(*layers.UDP)
+		DstPort = int(udp.DstPort)
+	default:
+	}
+
 	// 创建会话键，在这里判断数据包是否重复
 	var sessionKey string
 	switch transportLayer.(type) {
@@ -75,6 +88,7 @@ func JudgeIDAndWriteByteSessionMap(packet gopacket.Packet, ID *int64, sessionMap
 
 	// 创建新的 SessionInfo 对象，用于存储当前数据包的信息
 	newSessionInfo := define.SessionInfo{
+		Name:               GetProcessName(DstPort),
 		EndTime:            packet.Metadata().Timestamp,
 		Bytes:              float64(len(packet.Data())),
 		SrcIP:              srcIP.String(),
@@ -103,6 +117,12 @@ func JudgeIDAndWriteByteSessionMap(packet gopacket.Packet, ID *int64, sessionMap
 		newSessionInfo.Host = prevInfo.Host
 		// 复制之前的 Method
 		newSessionInfo.Method = prevInfo.Method
+		// 如果之前的名字为空，就更新为新的名字
+		if prevInfo.Name == "" {
+			newSessionInfo.Name = GetProcessName(DstPort)
+		} else {
+			newSessionInfo.Name = prevInfo.Name
+		}
 		// 更新映射
 		sessionMap.Store(sessionKey, newSessionInfo)
 
@@ -317,4 +337,42 @@ func isHTTP(packet gopacket.Packet) bool {
 		}
 	}
 	return false
+}
+
+func GetProcessName(DstPort int) string {
+	// 替换成你要查询的端口号
+	port := DstPort
+
+	// 获取进程名
+	// 使用lsof命令查询特定端口的进程信息
+	cmd := exec.Command("lsof", "-i", fmt.Sprintf(":%d", port))
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println("Error executing lsof:", err)
+		// 输出标准错误信息
+		fmt.Println("lsof stderr:", string(output))
+		return ""
+	}
+
+	// 解析lsof命令的输出
+	processInfo := string(output)
+	lines := strings.Split(processInfo, "\n")
+
+	// 提取进程名字
+	if len(lines) >= 2 {
+		fields := strings.Fields(lines[1])
+		if len(fields) >= 1 {
+			processName := strings.TrimSpace(fields[0])
+			fmt.Printf("Process Name: %q\n", processName)
+			return processName
+		} else {
+			fmt.Printf("No process name found\n")
+			return "N/A"
+		}
+	} else {
+		fmt.Printf("No process found for port %d\n", port)
+	}
+
+	return "N/A"
 }
