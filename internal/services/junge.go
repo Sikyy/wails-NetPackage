@@ -239,6 +239,7 @@ func HandleHTTPPorHTTPSPacket(packet gopacket.Packet) (string, string) {
 				host = result[3]
 				method = result[1]
 			}
+			//当不属于HTTP/HTTPS时，返回TCP
 		} else {
 			fmt.Println("--------------------------------------------------------------------")
 			fmt.Println("方法为:TCP")
