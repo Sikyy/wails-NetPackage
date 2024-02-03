@@ -527,6 +527,6 @@ func GetCommandName(DstPort int, SrcPort int) string {
 
 // 判断是否是出站流量，如果是返回true，否则返回false
 // 如果源端口大于目标端口，表示是出站流量
-func isOutgoing(srcPort, dstPort int) bool {
-	return srcPort > dstPort
+func isOutgoing(dstPort, srcPort int) bool {
+	return dstPort > srcPort
 }
