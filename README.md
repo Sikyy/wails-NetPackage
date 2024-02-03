@@ -77,6 +77,5 @@ wails dev环境下一切正常
 本知道是不是我本地环境的问题，因为我的终端也会这个样子，但是按道理来说我函数都没有给终端经手，我直接把它原数据拿过来了...再看看吧，我也找不到人测试
 
 不正常情况：
-https://siky-telegraph-image.pages.dev/file/15b44071f7b579765092e.png
 ![2](https://siky-telegraph-image.pages.dev/file/15b44071f7b579765092e.png)
 
