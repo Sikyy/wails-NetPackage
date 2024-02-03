@@ -42,7 +42,7 @@
     const existingIndex = tableData.value.findIndex(item => item.id === data.ID);
 
     // 如果 method 不是 "UDP"，才进行添加或更新操作
-    if (data.Method !== "UDP") {
+    if (data.Method !== "UDP" && data.Method !== "TCP") {
       if (existingIndex !== -1) {
         // 如果存在，更新现有数据
         tableData.value[existingIndex] = {

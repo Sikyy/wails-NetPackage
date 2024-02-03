@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -16,6 +17,17 @@ import (
 )
 
 var mu sync.Mutex
+
+type ProcessInfo struct {
+	Command string
+	PID     string
+	User    string
+	Type    string
+	Node    string
+	Name    string
+	Port    int
+	Remote  string
+}
 
 // 判断TCP是否终止，如果终止返回true，否则返回false
 func JungeTCPFinal(packet gopacket.Packet) string {
@@ -56,14 +68,16 @@ func JudgeIDAndWriteByteSessionMap(packet gopacket.Packet, ID *int64, sessionMap
 	}
 
 	//获取DstPort
-	var DstPort int
+	var DstPort, SrcPort int
 	switch transportLayer.(type) {
 	case *layers.TCP:
 		tcp, _ := transportLayer.(*layers.TCP)
 		DstPort = int(tcp.DstPort)
+		SrcPort = int(tcp.SrcPort)
 	case *layers.UDP:
 		udp, _ := transportLayer.(*layers.UDP)
 		DstPort = int(udp.DstPort)
+		SrcPort = int(udp.SrcPort)
 	default:
 	}
 
@@ -88,7 +102,7 @@ func JudgeIDAndWriteByteSessionMap(packet gopacket.Packet, ID *int64, sessionMap
 
 	// 创建新的 SessionInfo 对象，用于存储当前数据包的信息
 	newSessionInfo := define.SessionInfo{
-		Name:               GetProcessName(DstPort),
+		Name:               GetCommandName(DstPort, SrcPort),
 		EndTime:            packet.Metadata().Timestamp,
 		Bytes:              float64(len(packet.Data())),
 		SrcIP:              srcIP.String(),
@@ -119,7 +133,7 @@ func JudgeIDAndWriteByteSessionMap(packet gopacket.Packet, ID *int64, sessionMap
 		newSessionInfo.Method = prevInfo.Method
 		// 如果之前的名字为空，就更新为新的名字
 		if prevInfo.Name == "" {
-			newSessionInfo.Name = GetProcessName(DstPort)
+			newSessionInfo.Name = GetCommandName(DstPort, SrcPort)
 		} else {
 			newSessionInfo.Name = prevInfo.Name
 		}
@@ -166,6 +180,22 @@ func HandleHTTPPorHTTPSPacket(packet gopacket.Packet) (string, string) {
 	var srcIP, dstIP net.IP
 	var protocol layers.IPProtocol
 
+	// 获取传输层
+	transportLayer := packet.TransportLayer()
+
+	var DstPort, SrcPort int
+	switch transportLayer.(type) {
+	case *layers.TCP:
+		tcp, _ := transportLayer.(*layers.TCP)
+		DstPort = int(tcp.DstPort)
+		SrcPort = int(tcp.SrcPort)
+	case *layers.UDP:
+		udp, _ := transportLayer.(*layers.UDP)
+		DstPort = int(udp.DstPort)
+		SrcPort = int(udp.SrcPort)
+	default:
+	}
+
 	switch ipLayer := ipLayer.(type) {
 	case *layers.IPv4:
 		srcIP = ipLayer.SrcIP
@@ -207,7 +237,7 @@ func HandleHTTPPorHTTPSPacket(packet gopacket.Packet) (string, string) {
 			fmt.Println("Protocol: ", protocol)
 			fmt.Printf("From port %d to %d\n", tcp.SrcPort, tcp.DstPort)
 			fmt.Println("Sequence number: ", tcp.Seq)
-			host = "HTTPS:443"
+			host = GetRemoteAddress(DstPort, SrcPort) + ":443"
 			method = "HTTPS"
 		} else if isHTTP(packet) {
 			applicationLayer := packet.ApplicationLayer()
@@ -340,40 +370,163 @@ func isHTTP(packet gopacket.Packet) bool {
 	return false
 }
 
-func GetProcessName(DstPort int) string {
-	// 替换成你要查询的端口号
+func GetProcessInfo(DstPort int) ([]ProcessInfo, error) {
+	// 设置端口号
 	port := DstPort
 
-	// 获取进程名
-	// 使用lsof命令查询特定端口的进程信息
-	cmd := exec.Command("lsof", "-i", fmt.Sprintf(":%d", port))
+	// 设置命令 -F 可以直接输出原始输出信息，防止直接 -i 输出的信息字符有问题
+	cmd := exec.Command("lsof", "-i", fmt.Sprintf(":%d", port), "-F")
 
+	// 执行命令，获取输出
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println("Error executing lsof:", err)
-		// 输出标准错误信息
 		fmt.Println("lsof stderr:", string(output))
+		return nil, err
+	}
+
+	// 将输出解析成字符串数组
+	lines := strings.Split(string(output), "\n")
+
+	// 初始化 ProcessInfo 数组
+	var processInfos []ProcessInfo
+	var currentProcessInfo ProcessInfo
+
+	// 解析每一行
+	for _, line := range lines {
+		if len(line) < 2 {
+			continue
+		}
+
+		// 根据每行的第一个字符来判断信息类型
+		switch line[0] {
+		case 'p':
+			// 如果有当前进程信息，将其加入数组
+			if currentProcessInfo.PID != "" {
+				processInfos = append(processInfos, currentProcessInfo)
+			}
+
+			// 初始化新的进程信息
+			currentProcessInfo = ProcessInfo{PID: line[1:]}
+		case 'c':
+			currentProcessInfo.Command = line[1:]
+		case 'u':
+			currentProcessInfo.User = line[1:]
+		case 't':
+			currentProcessInfo.Type = line[1:]
+		case 'P':
+			currentProcessInfo.Node = line[1:]
+		case 'n':
+			currentProcessInfo.Name = line[1:]
+			// 解析远程地址和远程端口
+			//按照->进行分割
+			//siky-mac-mini:54182 lb-140-82-114-26-iad.github.com:https
+			parts := strings.Split(currentProcessInfo.Name, "->")
+			if len(parts) == 2 {
+				// 解析远程端口
+				//按照:进行分割
+				//siky-mac-mini 54182
+				localPort := strings.Split(parts[0], ":")
+				//lb-140-82-114-26-iad.github.com https
+				remoteAddress := strings.Split(parts[1], ":")
+				if len(remoteAddress) == 2 {
+					currentProcessInfo.Remote = remoteAddress[0]
+					// fmt.Printf("远程地址:%v", currentProcessInfo.Remote)
+				}
+				if len(localPort) == 2 {
+					// 将 localPort[1] 转换为整数，并同时处理可能的错误
+					port, err := strconv.Atoi(localPort[1])
+					if err != nil {
+						// 处理转换错误
+						fmt.Printf("Error converting %s to int: %v\n", localPort[1], err)
+					} else {
+						// 转换成功，将 port 赋值给 currentProcessInfo.Port
+						currentProcessInfo.Port = port
+						// fmt.Printf("本地端口:%v\n", currentProcessInfo.Port)
+					}
+				}
+			}
+		}
+	}
+
+	// 加入最后一个进程信息
+	if currentProcessInfo.PID != "" {
+		processInfos = append(processInfos, currentProcessInfo)
+	}
+
+	// 打印结果
+	// for _, info := range processInfos {
+	// 	fmt.Printf("PID %s\n COMMAND %s\n USER %s\n TYPE %s\n NODE %s\n NAME %s\n PORT %d\n REMOTE %s\n\n",
+	// 		info.PID, info.Command, info.User, info.Type, info.Node, info.Name, info.Port, info.Remote)
+	// }
+
+	return processInfos, nil
+}
+
+func GetCommandByPort(port int, processInfos []ProcessInfo) (string, error) {
+	for _, info := range processInfos {
+		if info.Port == port {
+			return info.Command, nil
+		}
+	}
+	return "", fmt.Errorf("Port %d not found in processInfos", port)
+}
+
+func GetRemoteAddressByPort(port int, processInfos []ProcessInfo) (string, error) {
+	for _, info := range processInfos {
+		if info.Port == port {
+			return info.Remote, nil
+		}
+	}
+	return "", fmt.Errorf("Port %d not found in processInfos", port)
+}
+
+func GetRemoteAddress(DstPort int, SrcPort int) string {
+	isOutgoing := isOutgoing(SrcPort, DstPort)
+	var processInfos []ProcessInfo
+	var err error
+	if isOutgoing {
+		// 出站流量，获取 SrcPort 对应的进程信息
+		processInfos, err = GetProcessInfo(SrcPort)
+	} else {
+		// 入站流量，获取 DstPort 对应的进程信息
+		processInfos, err = GetProcessInfo(DstPort)
+	}
+
+	remoteAddress, err := GetRemoteAddressByPort(SrcPort, processInfos)
+	if err != nil {
+		return ""
+	}
+	return remoteAddress
+
+}
+
+func GetCommandName(DstPort int, SrcPort int) string {
+	isOutgoing := isOutgoing(SrcPort, DstPort)
+	var processInfos []ProcessInfo
+	var err error
+
+	if isOutgoing {
+		// 出站流量，获取 SrcPort 对应的进程信息
+		processInfos, err = GetProcessInfo(SrcPort)
+	} else {
+		// 入站流量，获取 DstPort 对应的进程信息
+		processInfos, err = GetProcessInfo(DstPort)
+	}
+
+	if err != nil {
 		return ""
 	}
 
-	// 解析lsof命令的输出
-	processInfo := string(output)
-	lines := strings.Split(processInfo, "\n")
-
-	// 提取进程名字
-	if len(lines) >= 2 {
-		fields := strings.Fields(lines[1])
-		if len(fields) >= 1 {
-			processName := strings.TrimSpace(fields[0])
-			fmt.Printf("Process Name: %q\n", processName)
-			return processName
-		} else {
-			fmt.Printf("No process name found\n")
-			return "N/A"
-		}
-	} else {
-		fmt.Printf("No process found for port %d\n", port)
+	command, err := GetCommandByPort(SrcPort, processInfos)
+	if err != nil {
+		return ""
 	}
+	return command
+}
 
-	return "N/A"
+// 判断是否是出站流量，如果是返回true，否则返回false
+// 如果源端口大于目标端口，表示是出站流量
+func isOutgoing(srcPort, dstPort int) bool {
+	return srcPort > dstPort
 }
