@@ -56,7 +56,7 @@ func JudgeIDAndWriteByteSessionMap(packet gopacket.Packet, ID *int64, sessionMap
 	// 获取传输层
 	transportLayer := packet.TransportLayer()
 
-	// 获取 IP 层和传输层
+	// 获取 srcIP, dstIP
 	var srcIP, dstIP net.IP
 	switch ipLayer := ipLayer.(type) {
 	case *layers.IPv4:
@@ -355,7 +355,7 @@ func isHTTP(packet gopacket.Packet) bool {
 		tcp := transportLayer.(*layers.TCP)
 
 		// 检查是否为HTTP端口
-		if tcp.DstPort == 80 {
+		if tcp.DstPort == 80 || tcp.SrcPort == 80 {
 			applicationLayer := packet.ApplicationLayer()
 
 			// 检查是否包含HTTP请求方法
